@@ -1,4 +1,4 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr/dist/module/createServerClient.js";
 import { NextResponse, type NextRequest } from "next/server";
 
 function isValidSupabaseUrl(value: string | undefined) {
@@ -22,17 +22,19 @@ function hasUsableSupabaseConfig() {
 }
 
 export async function middleware(request: NextRequest) {
-  if (!hasUsableSupabaseConfig()) {
-    return NextResponse.next({
-      request
-    });
+  try {
+    if (!hasUsableSupabaseConfig()) {
+      return NextResponse.next();
+    }
+  } catch {
+    return NextResponse.next();
   }
 
-  let response = NextResponse.next({
-    request
-  });
-
   try {
+    let response = NextResponse.next({
+      request
+    });
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -45,9 +47,11 @@ export async function middleware(request: NextRequest) {
             cookiesToSet.forEach(({ name, value }) => {
               request.cookies.set(name, value);
             });
+
             response = NextResponse.next({
               request
             });
+
             cookiesToSet.forEach(({ name, value, options }) => {
               response.cookies.set(name, value, options);
             });
@@ -57,13 +61,13 @@ export async function middleware(request: NextRequest) {
     );
 
     await supabase.auth.getUser();
+
+    return response;
   } catch {
     return NextResponse.next({
       request
     });
   }
-
-  return response;
 }
 
 export const config = {
