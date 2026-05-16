@@ -73,17 +73,5 @@ export async function generateMetadata({ params }: ArthurPageProps): Promise<Met
 }
 
 export default async function ArthurPage() {
-  let isCreator = false;
-
-  try {
-    const supabase = createSupabaseServerClient();
-    const {
-      data: { user }
-    } = await supabase.auth.getUser();
-    isCreator = Boolean(user && user.id === process.env.CREATOR_USER_ID);
-  } catch {
-    isCreator = false;
-  }
-
-  return <ArthurExperience isCreator={isCreator} />;
+  return <ArthurExperience />;
 }

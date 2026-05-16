@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase-client";
 
 type NavigationProps = {
@@ -10,6 +10,35 @@ type NavigationProps = {
 
 export function Navigation({ isAuthenticated = false }: NavigationProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [hasSession, setHasSession] = useState(isAuthenticated);
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+
+    if (!supabase) {
+      setHasSession(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (isMounted) {
+        setHasSession(Boolean(data.session));
+      }
+    });
+
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setHasSession(Boolean(session));
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   async function handleLogout() {
     const supabase = createSupabaseBrowserClient();
@@ -18,10 +47,11 @@ export function Navigation({ isAuthenticated = false }: NavigationProps) {
       await supabase.auth.signOut();
     }
 
+    setHasSession(false);
     window.location.href = "/";
   }
 
-  const authControl = isAuthenticated ? (
+  const authControl = hasSession ? (
     <button className="nav-link nav-button" type="button" onClick={handleLogout}>
       LOGOUT
     </button>
@@ -70,7 +100,7 @@ export function Navigation({ isAuthenticated = false }: NavigationProps) {
           <Link onClick={() => setIsOpen(false)} href="/about">
             ABOUT
           </Link>
-          {isAuthenticated ? (
+          {hasSession ? (
             <button type="button" onClick={handleLogout}>
               LOGOUT
             </button>

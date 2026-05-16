@@ -5,6 +5,7 @@ import { CommandPanel } from "./CommandPanel";
 import { MutationLog, type MutationLogItem } from "./MutationLog";
 import { StatPanel } from "./StatPanel";
 import { Vivarium } from "./Vivarium";
+import { createSupabaseBrowserClient } from "@/lib/supabase-client";
 import type { ArthurState, Genome } from "@/lib/types";
 
 type ArthurPayload = {
@@ -17,10 +18,6 @@ type ArthurPayload = {
     state: ArthurState;
     genome: Genome;
   };
-};
-
-type ArthurExperienceProps = {
-  isCreator: boolean;
 };
 
 function PanelSkeleton() {
@@ -42,13 +39,20 @@ function LoadingOrganism() {
   );
 }
 
-export function ArthurExperience({ isCreator }: ArthurExperienceProps) {
+function isCreatorUser(userId: string | undefined) {
+  const creatorUserId = process.env.NEXT_PUBLIC_CREATOR_USER_ID?.trim();
+
+  return Boolean(creatorUserId && userId === creatorUserId);
+}
+
+export function ArthurExperience() {
   const [payload, setPayload] = useState<ArthurPayload | null>(null);
   const [log, setLog] = useState<MutationLogItem[]>([]);
   const [logOffset, setLogOffset] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isLogLoading, setIsLogLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [isCreator, setIsCreator] = useState(false);
   const [toast, setToast] = useState("");
 
   const stateFingerprint = useMemo(
@@ -96,6 +100,34 @@ export function ArthurExperience({ isCreator }: ArthurExperienceProps) {
   useEffect(() => {
     fetchArthur();
     fetchLog(0);
+  }, []);
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+
+    if (!supabase) {
+      setIsCreator(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (isMounted) {
+        setIsCreator(isCreatorUser(data.session?.user.id));
+      }
+    });
+
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsCreator(isCreatorUser(session?.user.id));
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
