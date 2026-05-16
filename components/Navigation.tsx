@@ -13,7 +13,11 @@ export function Navigation({ isAuthenticated = false }: NavigationProps) {
 
   async function handleLogout() {
     const supabase = createSupabaseBrowserClient();
-    await supabase.auth.signOut();
+
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+
     window.location.href = "/";
   }
 

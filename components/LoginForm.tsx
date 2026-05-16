@@ -1,7 +1,10 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase-client";
+import {
+  createSupabaseBrowserClient,
+  getSupabaseBrowserConfigError
+} from "@/lib/supabase-client";
 
 const MAGIC_LINK_TIMEOUT_MS = 15000;
 
@@ -47,6 +50,14 @@ export function LoginForm() {
     try {
       const trimmedEmail = email.trim();
       const supabase = createSupabaseBrowserClient();
+
+      if (!supabase) {
+        throw new Error(
+          getSupabaseBrowserConfigError() ??
+            "Supabase public configuration is unavailable in this deployment."
+        );
+      }
+
       const redirectTo = `${window.location.origin}/doma8192`;
       const { error } = await withTimeout(
         supabase.auth.signInWithOtp({
